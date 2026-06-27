@@ -40,9 +40,9 @@
 - [x] Clustered Forward shading
 
 ### Phase 4 — ECS
-- [ ] Sparse-set entity component system in native C
-- [ ] Component registration and archetype layout
-- [ ] Entity create / destroy / query API
+- [X] Sparse-set entity component system in native C
+- [X] Component registration and archetype layout
+- [X] Entity create / destroy / query API
 
 ### Phase 5 — .NET Host & Interop
 - [ ] CoreCLR host via `hostfxr`

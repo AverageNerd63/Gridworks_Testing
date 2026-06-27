@@ -1,5 +1,6 @@
 
 Claude.md
+compile_commands.json
 
 # Build outputs
 build/
@@ -26,3 +27,5 @@ bin/
 .idea/
 *.swp
 *~
+
+.cache/
