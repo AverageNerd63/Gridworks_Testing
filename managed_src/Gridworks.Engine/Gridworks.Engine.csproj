@@ -6,5 +6,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <AssemblyName>Gridworks.Engine</AssemblyName>
     <RootNamespace>Gridworks.Engine</RootNamespace>
+    <GenerateRuntimeConfigurationFiles>true</GenerateRuntimeConfigurationFiles>
   </PropertyGroup>
 </Project>
