@@ -45,18 +45,18 @@
 - [X] Entity create / destroy / query API
 
 ### Phase 5 — .NET Host & Interop
-- [ ] CoreCLR host via `hostfxr`
-- [ ] Collectible `AssemblyLoadContext` setup
-- [ ] Zero-allocation pointer exchange between C and C# ECS
-- [ ] C# ECS bindings (`Gridworks.Engine`)
-- [ ] Hot reload loop (file watcher → unload → GC → reload)
+- [x] CoreCLR host via `hostfxr`
+- [x] Collectible `AssemblyLoadContext` setup
+- [x] Zero-allocation pointer exchange between C and C# ECS
+- [x] C# ECS bindings (`Gridworks.Engine`)
+- [x] Hot reload loop (file watcher → unload → GC → reload)
 
 ### Phase 6 — Editor Viewport
-- [ ] Dear ImGui (cimgui) integration
-- [ ] Default editor layout (viewport, hierarchy, inspector, console)
-- [ ] stb_truetype atlas-based text rendering
-- [ ] UI vertex/UV extension for editor widgets
-- [ ] `[EditorCustomization]` attribute — C# custom panel system (`Gridworks.Editor`)
+- [x] Dear ImGui (cimgui) integration
+- [x] Default editor layout (viewport, hierarchy, inspector, console)
+- [x] stb_truetype atlas-based text rendering
+- [x] UI vertex/UV extension for editor widgets
+- [x] `[EditorCustomization]` attribute — C# custom panel system (`Gridworks.Editor`)
 
 ### Phase 7 — Gizmo & Scene Interaction
 - [ ] Viewport camera controls (orbit, pan, fly)
