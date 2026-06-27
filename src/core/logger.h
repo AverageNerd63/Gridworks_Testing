@@ -14,6 +14,11 @@ void logger_shutdown(void);
 void logger_set_level(LogLevel level);
 void logger_log(LogLevel level, const char *file, int line, const char *fmt, ...);
 
+/* Sink callback: receives the fully-formatted line (no ANSI codes). */
+typedef void (*GwLogSink)(LogLevel level, const char *line, void *user);
+void logger_add_sink(GwLogSink sink, void *user);
+void logger_remove_sink(GwLogSink sink);
+
 #define LOG_TRACE(...) logger_log(LOG_LEVEL_TRACE, __FILE__, __LINE__, __VA_ARGS__)
 #define LOG_DEBUG(...) logger_log(LOG_LEVEL_DEBUG, __FILE__, __LINE__, __VA_ARGS__)
 #define LOG_INFO(...)  logger_log(LOG_LEVEL_INFO,  __FILE__, __LINE__, __VA_ARGS__)

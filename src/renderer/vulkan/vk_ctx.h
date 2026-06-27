@@ -12,6 +12,7 @@ typedef struct {
     VkQueue                  present_queue;
     u32                      graphics_family;
     u32                      present_family;
+    VkDescriptorPool         imgui_pool;
 } VkCtx;
 
 extern VkCtx s_ctx;

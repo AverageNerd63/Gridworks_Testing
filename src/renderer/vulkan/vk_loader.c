@@ -57,6 +57,8 @@ void vk_loader_load_instance_funcs(VkInstance instance) {
     LOAD_INSTANCE(vkCreateDevice)
     LOAD_INSTANCE(vkDestroySurfaceKHR)
     LOAD_INSTANCE(vkGetDeviceProcAddr)
+    LOAD_INSTANCE(vkCreateDebugUtilsMessengerEXT)
+    LOAD_INSTANCE(vkDestroyDebugUtilsMessengerEXT)
     LOG_INFO("Vulkan instance functions loaded");
 }
 
@@ -114,6 +116,20 @@ void vk_loader_load_device_funcs(VkDevice device) {
     LOAD_DEVICE(vkBindBufferMemory)
     LOAD_DEVICE(vkMapMemory)
     LOAD_DEVICE(vkUnmapMemory)
+    LOAD_DEVICE(vkCreateImage)
+    LOAD_DEVICE(vkDestroyImage)
+    LOAD_DEVICE(vkGetImageMemoryRequirements)
+    LOAD_DEVICE(vkBindImageMemory)
+    LOAD_DEVICE(vkCreateSampler)
+    LOAD_DEVICE(vkDestroySampler)
+    LOAD_DEVICE(vkCreateDescriptorSetLayout)
+    LOAD_DEVICE(vkDestroyDescriptorSetLayout)
+    LOAD_DEVICE(vkCreateDescriptorPool)
+    LOAD_DEVICE(vkDestroyDescriptorPool)
+    LOAD_DEVICE(vkAllocateDescriptorSets)
+    LOAD_DEVICE(vkUpdateDescriptorSets)
+    LOAD_DEVICE(vkCmdPipelineBarrier)
+    LOAD_DEVICE(vkCmdCopyBufferToImage)
     LOG_INFO("Vulkan device functions loaded");
 }
 

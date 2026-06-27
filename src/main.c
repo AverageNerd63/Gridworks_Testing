@@ -8,6 +8,7 @@
 #include "ecs/ecs.h"
 #include "ecs/ecs_export.h"
 #include "host/gw_host.h"
+#include "ui/editor_ui.h"
 
 #include <stdatomic.h>
 #include <string.h>
@@ -73,7 +74,8 @@ int main(void) {
         .window  = &window,
         .backend = GW_RENDERER_BACKEND_VULKAN,
     };
-    if (!gw_renderer_init(&rdesc)) return 1;
+    if (!gw_renderer_init(&rdesc)) return 1;  /* imgui_init fires here */
+    editor_ui_init();
 
     Timer timer;
     timer_init(&timer);
@@ -98,11 +100,13 @@ int main(void) {
         }
 
         if (!gw_renderer_begin_frame()) continue;
+        editor_ui_build();
         gw_renderer_end_frame();
     }
 
     fw_stop(&fw);
     fw_stop(&fw_src);
+    editor_ui_shutdown();
     gw_renderer_wait_idle();
     gw_renderer_shutdown();
     s_managed_unload(NULL);

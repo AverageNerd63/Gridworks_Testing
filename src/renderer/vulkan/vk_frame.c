@@ -1,4 +1,5 @@
 #include "vk_frame.h"
+#include "../../ui/imgui_bridge.h"
 #include "../../core/logger.h"
 #include <string.h>
 
@@ -60,9 +61,8 @@ bool vk_begin_frame(void) {
     Frame *f = &s_frames[s_frame_idx];
     vk.vkWaitForFences(s_ctx.device, 1, &f->in_flight, VK_TRUE, UINT64_MAX);
 
-    static u32 acquire_idx = 0;
-    VkSemaphore acquire_sem = s_acquire_sems[acquire_idx];
-    acquire_idx = (acquire_idx + 1) % s_swapchain.image_count;
+    /* one acquire semaphore per frame-in-flight, not per image */
+    VkSemaphore acquire_sem = s_acquire_sems[s_frame_idx];
 
     VkResult r = vk.vkAcquireNextImageKHR(s_ctx.device, s_swapchain.swapchain,
                                            UINT64_MAX, acquire_sem,
@@ -110,6 +110,8 @@ bool vk_begin_frame(void) {
     vk.vkCmdBindIndexBuffer(f->cmd_buf, s_index_buf, 0, VK_INDEX_TYPE_UINT16);
 
     f->_acquire_sem = acquire_sem;
+
+    imgui_new_frame();
     return true;
 }
 
@@ -117,6 +119,8 @@ void vk_end_frame(void) {
     Frame *f = &s_frames[s_frame_idx];
 
     vk.vkCmdDrawIndexed(f->cmd_buf, 3, 1, 0, 0, 0);
+    imgui_render(f->cmd_buf);
+
     vk.vkCmdEndRenderPass(f->cmd_buf);
     vk.vkEndCommandBuffer(f->cmd_buf);
 

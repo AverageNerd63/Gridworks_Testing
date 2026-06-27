@@ -1,6 +1,7 @@
 #include "../window.h"
 #include "../input.h"
 #include "../../core/logger.h"
+#include "../../ui/imgui_bridge.h"
 #include <windows.h>
 #include <stdlib.h>
 
@@ -39,6 +40,8 @@ static void build_vk_map(void) {
 }
 
 static LRESULT CALLBACK wnd_proc(HWND hwnd, UINT msg, WPARAM wp, LPARAM lp) {
+    imgui_process_msg(msg, (uintptr_t)wp, (intptr_t)lp);
+
     GwWindow *w = (GwWindow *)GetWindowLongPtrA(hwnd, GWLP_USERDATA);
 
     switch (msg) {

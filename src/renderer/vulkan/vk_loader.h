@@ -81,6 +81,22 @@ typedef struct {
     PFN_vkBindBufferMemory            vkBindBufferMemory;
     PFN_vkMapMemory                   vkMapMemory;
     PFN_vkUnmapMemory                 vkUnmapMemory;
+
+        /* ---- texture / descriptor  ---- */
+    PFN_vkCreateImage                  vkCreateImage;
+    PFN_vkDestroyImage                 vkDestroyImage;
+    PFN_vkGetImageMemoryRequirements   vkGetImageMemoryRequirements;
+    PFN_vkBindImageMemory              vkBindImageMemory;
+    PFN_vkCreateSampler                vkCreateSampler;
+    PFN_vkDestroySampler               vkDestroySampler;
+    PFN_vkCreateDescriptorSetLayout    vkCreateDescriptorSetLayout;
+    PFN_vkDestroyDescriptorSetLayout   vkDestroyDescriptorSetLayout;
+    PFN_vkCreateDescriptorPool         vkCreateDescriptorPool;
+    PFN_vkDestroyDescriptorPool        vkDestroyDescriptorPool;
+    PFN_vkAllocateDescriptorSets       vkAllocateDescriptorSets;
+    PFN_vkUpdateDescriptorSets         vkUpdateDescriptorSets;
+    PFN_vkCmdPipelineBarrier           vkCmdPipelineBarrier;
+    PFN_vkCmdCopyBufferToImage         vkCmdCopyBufferToImage;
 } VkFuncTable;
 
 extern VkFuncTable vk;

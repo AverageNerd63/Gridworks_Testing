@@ -6,8 +6,10 @@
 #include "vk_pipeline.h"
 #include "vk_buffer.h"
 #include "vk_frame.h"
+#include "../../ui/imgui_bridge.h"
 #include "../../core/logger.h"
 #include "../../platform/vk_surface.h"
+#include "../../platform/window.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -182,11 +184,29 @@ static bool vk_init(const GwRendererDesc *desc) {
     if (!create_pipeline())            return false;
     if (!create_mesh_buffers())        return false;
     if (!create_frames())              return false;
+    {
+        VkDescriptorPoolSize pool_sizes[] = {
+            { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
+            { VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 16 },
+            { VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,          16 },
+        };
+        VkDescriptorPoolCreateInfo pool_ci = {
+            .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
+            .flags         = VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT,
+            .maxSets       = 16,
+            .poolSizeCount = 3, .pPoolSizes = pool_sizes,
+        };
+        VK_CHECK(vk.vkCreateDescriptorPool(s_ctx.device, &pool_ci, NULL, &s_ctx.imgui_pool));
+    }
+    if (!imgui_init(desc->window ? gw_window_get_hwnd(desc->window) : NULL)) return false;
     LOG_INFO("[vulkan] backend ready");
     return true;
 }
 
 static void vk_shutdown(void) {
+    imgui_shutdown();
+    if (s_ctx.imgui_pool)
+        vk.vkDestroyDescriptorPool(s_ctx.device, s_ctx.imgui_pool, NULL);
     if (s_ctx.device) vk.vkDeviceWaitIdle(s_ctx.device);
     destroy_frames();
     destroy_mesh_buffers();
