@@ -1,0 +1,28 @@
+
+Claude.md
+
+# Build outputs
+build/
+obj/
+bin/
+
+# Native binaries
+*.exe
+*.dll
+*.pdb
+*.lib
+*.exp
+*.o
+*.a
+
+# .NET
+*.user
+.vs/
+*.suo
+*.DS_Store
+
+# Editor artifacts
+.vscode/
+.idea/
+*.swp
+*~

@@ -1,0 +1,10 @@
+CompileFlags:
+  CompilationDatabase: .    # compile_commands.json lives at the root
+  Add: [-ferror-limit=0]
+
+Diagnostics:
+  UnusedIncludes: None      # reduces noise on platform-specific headers
+  MissingIncludes: None
+
+InlayHints:
+  Enabled: No
