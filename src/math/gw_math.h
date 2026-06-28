@@ -65,6 +65,7 @@ Mat4 mat4_rotate(Vec3 axis, f32 radians);
 Mat4 mat4_perspective(f32 fov_y_rad, f32 aspect, f32 near, f32 far);
 Mat4 mat4_look_at(Vec3 eye, Vec3 center, Vec3 up);
 Vec4 mat4_mul_vec4(Mat4 m, Vec4 v);
+Mat4 mat4_invert(Mat4 m);
 
 /* ---- Quat ------------------------------------------------------------- */
 
