@@ -59,11 +59,11 @@
 - [x] `[EditorCustomization]` attribute — C# custom panel system (`Gridworks.Editor`)
 
 ### Phase 7 — Gizmo & Scene Interaction
-- [ ] Viewport camera controls (orbit, pan, fly)
-- [ ] Selection system (ray-cast pick)
-- [ ] Translate / rotate / scale gizmos
-- [ ] Gizmo registry (mode and overlay pools)
-- [ ] Undo/redo command stack
+- [x] Viewport camera controls (orbit, pan, fly)
+- [x] Selection system (ray-cast pick)
+- [x] Translate / rotate / scale gizmos
+- [x] Gizmo registry (mode and overlay pools)
+- [x] Undo/redo command stack
 
 ### Phase 8 — Project Manager
 - [ ] Project manager dialog (create / open project)
