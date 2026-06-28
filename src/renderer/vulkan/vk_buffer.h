@@ -3,7 +3,7 @@
 #include <stdbool.h>
 
 typedef struct {
-    f32 pos[2];
+    f32 pos[3];
     f32 col[3];
 } Vertex;
 

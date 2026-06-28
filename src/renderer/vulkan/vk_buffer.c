@@ -100,10 +100,10 @@ void upload_buffer(VkBuffer dst, const void *data, VkDeviceSize size) {
 
 bool create_mesh_buffers(void) {
     static const Vertex verts[] = {
-        {{ 0.0f, -0.5f}, {1.0f, 0.0f, 0.0f}},
-        {{ 0.5f,  0.5f}, {0.0f, 1.0f, 0.0f}},
-        {{-0.5f,  0.5f}, {0.0f, 0.0f, 1.0f}},
-    };
+    {{ 0.0f,  0.5f, 0.0f}, {1.0f, 0.2f, 0.2f}},
+    {{ 0.5f, -0.5f, 0.0f}, {0.2f, 1.0f, 0.2f}},
+    {{-0.5f, -0.5f, 0.0f}, {0.2f, 0.2f, 1.0f}},
+};
     static const u16 indices[] = { 0, 1, 2 };
 
     alloc_buffer(sizeof(verts),

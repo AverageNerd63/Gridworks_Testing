@@ -1,4 +1,5 @@
 #include "vk_pipeline.h"
+#include "vk_scene_pass.h"
 #include "../../core/logger.h"
 #include "../../platform/filesystem.h"
 #include <stdlib.h>
@@ -52,7 +53,7 @@ bool create_pipeline(void) {
         .binding = 0, .stride = sizeof(Vertex), .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
     };
     VkVertexInputAttributeDescription attrs[2] = {
-        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32_SFLOAT,    .offset = offsetof(Vertex, pos) },
+        { .location = 0, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, pos) },
         { .location = 1, .binding = 0, .format = VK_FORMAT_R32G32B32_SFLOAT, .offset = offsetof(Vertex, col) },
     };
     VkPipelineVertexInputStateCreateInfo vert_input = {
@@ -99,8 +100,15 @@ bool create_pipeline(void) {
         .dynamicStateCount = 2, .pDynamicStates = dyn_states,
     };
 
+    VkPushConstantRange push_range = {
+        .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+        .offset     = 0,
+        .size       = 64,   /* sizeof(Mat4) */
+    };
     VkPipelineLayoutCreateInfo layout_ci = {
-        .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+        .pushConstantRangeCount = 1,
+        .pPushConstantRanges    = &push_range,
     };
     VK_CHECK(vk.vkCreatePipelineLayout(s_ctx.device, &layout_ci, NULL, &s_pipeline_layout));
 
@@ -115,7 +123,7 @@ bool create_pipeline(void) {
         .pColorBlendState    = &blend,
         .pDynamicState       = &dynamic,
         .layout              = s_pipeline_layout,
-        .renderPass          = s_render_pass,
+        .renderPass          = s_scene_pass.render_pass,   /* was s_render_pass */
         .subpass             = 0,
     };
     VK_CHECK(vk.vkCreateGraphicsPipelines(s_ctx.device, VK_NULL_HANDLE, 1, &ci, NULL, &s_pipeline));

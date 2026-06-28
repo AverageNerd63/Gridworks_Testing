@@ -1,13 +1,22 @@
 #include "vk_frame.h"
+#include "vk_scene_pass.h"
 #include "../../ui/imgui_bridge.h"
 #include "../../core/logger.h"
 #include <string.h>
 
-Frame      s_frames[FRAMES_IN_FLIGHT];
-u32        s_frame_idx  = 0;
-u32        s_image_idx  = 0;
-VkSemaphore s_acquire_sems[MAX_SWAPCHAIN_IMAGES];
+Frame       s_frames[FRAMES_IN_FLIGHT];
+u32         s_frame_idx = 0;
+u32         s_image_idx = 0;
+VkSemaphore s_acquire_sems[FRAMES_IN_FLIGHT];
 VkSemaphore s_render_finished[MAX_SWAPCHAIN_IMAGES];
+
+static f32 s_camera_vp[16] = {
+    1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1
+};
+
+void vk_set_camera_vp(const f32 *mat16) {
+    memcpy(s_camera_vp, mat16, 64);
+}
 
 bool create_frames(void) {
     VkSemaphoreCreateInfo sem_ci   = { .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO };

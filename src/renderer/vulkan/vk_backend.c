@@ -3,6 +3,7 @@
 #include "vk_ctx.h"
 #include "vk_swapchain.h"
 #include "vk_renderpass.h"
+#include "vk_scene_pass.h"
 #include "vk_pipeline.h"
 #include "vk_buffer.h"
 #include "vk_frame.h"
