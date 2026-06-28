@@ -26,7 +26,9 @@ IMGUI_SRCS := third_party/imgui/imgui.cpp \
               third_party/imgui/imgui_tables.cpp \
               third_party/imgui/imgui_widgets.cpp \
               third_party/imgui/backends/imgui_impl_vulkan.cpp \
-              third_party/imgui/backends/imgui_impl_win32.cpp
+              third_party/imgui/backends/imgui_impl_win32.cpp \
+              third_party/ImGuizmo/ImGuizmo.cpp
+
 IMGUI_OBJS := $(patsubst third_party/%.cpp,$(OUTDIR)/obj/third_party/%.o,$(IMGUI_SRCS))
 
 CXX_OBJS := $(SRC_CXX_OBJS) $(IMGUI_OBJS)
