@@ -30,6 +30,9 @@ static managed_void_fn s_managed_load   = NULL;
 static managed_void_fn s_managed_unload = NULL;
 static atomic_bool     s_reload_pending = false;
 
+static ProjectConfig s_project;
+static bool          s_project_loaded = false;
+
 static void on_file_changed(FwEvent ev, void *user) {
     (void)user;
     if (strstr(ev.path, "UserProject.dll"))
@@ -40,33 +43,32 @@ static void on_source_changed(FwEvent ev, void *user) {
     (void)user;
     const char *ext = strrchr(ev.path, '.');
     if (!ext || strcmp(ext, ".cs") != 0) return;
-    LOG_INFO("[host] source changed, rebuilding UserProject...");
-    gw_process_spawn(
-        "dotnet build managed_src\\UserProject\\UserProject.csproj"
-        " -c Debug --nologo -v quiet");
+    LOG_INFO("[host] source changed, rebuilding...");
+    char cmd[PROJECT_PATH_MAX + 64];
+    snprintf(cmd, sizeof cmd,
+             "dotnet build \"%s\" -c Debug --nologo -v quiet",
+             s_project.user_csproj);
+    gw_process_spawn(cmd);
 }
 
 int main(void) {
     logger_init();
+    CoInitializeEx(NULL, COINIT_APARTMENTTHREADED);
     LOG_INFO("Gridworks starting...");
 
     /* ---- CoreCLR host -------------------------------------------------- */
     if (!gw_host_init(ENGINE_RCONFIG)) return 1;
 
     managed_void_fn managed_init = NULL;
-    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "Initialize",         (void **)&managed_init))      return 1;
-    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "LoadUserAssembly",   (void **)&s_managed_load))    return 1;
-    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "UnloadUserAssembly", (void **)&s_managed_unload))  return 1;
+    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "Initialize",
+                        (void **)&managed_init))     return 1;
+    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "LoadUserAssembly",
+                        (void **)&s_managed_load))   return 1;
+    if (!gw_host_get_fn(ENGINE_DLL, ENGINE_TYPE, "UnloadUserAssembly",
+                        (void **)&s_managed_unload)) return 1;
 
     GwEcsApi api = gw_ecs_api_get();
     managed_init(&api);
-    s_managed_load((void *)USER_DLL);
-
-    /* ---- Hot reload watcher -------------------------------------------- */
-    FileWatcher fw      = {0};
-    FileWatcher fw_src  = {0};
-    fw_start(&fw,     USER_WATCH_DIR,               on_file_changed,  NULL);
-    fw_start(&fw_src, "managed_src/UserProject",    on_source_changed, NULL);
 
     /* ---- Platform + renderer ------------------------------------------- */
     InputState input;
@@ -79,8 +81,14 @@ int main(void) {
         .window  = &window,
         .backend = GW_RENDERER_BACKEND_VULKAN,
     };
-    if (!gw_renderer_init(&rdesc)) return 1;  /* imgui_init fires here */
+    if (!gw_renderer_init(&rdesc)) return 1;
     editor_ui_init();
+
+    /* show project manager on startup */
+    project_ui_open();
+
+    FileWatcher fw     = {0};
+    FileWatcher fw_src = {0};
 
     Timer timer;
     timer_init(&timer);
@@ -90,12 +98,16 @@ int main(void) {
         gw_window_poll(&window);
         timer_tick(&timer);
 
-        if (input_key_pressed(&input, GW_KEY_ESCAPE)) window.running = false;
+        if (input_key_pressed(&input, GW_KEY_ESCAPE)) {
+            if (s_project_loaded)
+                window.running = false;
+            /* ignore Escape while project manager is open */
+        }
 
-        if (atomic_exchange(&s_reload_pending, false)) {
+        if (s_project_loaded && atomic_exchange(&s_reload_pending, false)) {
             LOG_INFO("[host] hot reload triggered");
             s_managed_unload(NULL);
-            s_managed_load((void *)USER_DLL);
+            s_managed_load((void *)s_project.user_dll);
         }
 
         if (window.width != prev_w || window.height != prev_h) {
@@ -105,19 +117,34 @@ int main(void) {
         }
 
         if (!gw_renderer_begin_frame()) continue;
-        editor_ui_build(&input, (f32)timer.delta);
+
+        if (!s_project_loaded) {
+            if (project_ui_draw(&s_project)) {
+                LOG_INFO("[project] loading user assembly: %s", s_project.user_dll);
+                s_managed_load((void *)s_project.user_dll);
+                fw_start(&fw,     s_project.user_watch_dir, on_file_changed,  NULL);
+                fw_start(&fw_src, s_project.user_src_dir,   on_source_changed, NULL);
+                s_project_loaded = true;
+            }
+        } else {
+            editor_ui_build(&input, (f32)timer.delta);
+        }
+
         gw_renderer_end_frame();
     }
 
-    fw_stop(&fw);
-    fw_stop(&fw_src);
+    if (s_project_loaded) {
+        fw_stop(&fw);
+        fw_stop(&fw_src);
+    }
     editor_ui_shutdown();
     gw_renderer_wait_idle();
     gw_renderer_shutdown();
-    s_managed_unload(NULL);
+    if (s_project_loaded) s_managed_unload(NULL);
     gw_host_shutdown();
     LOG_INFO("Shutdown clean.");
     gw_window_destroy(&window);
+    CoUninitialize();
     logger_shutdown();
     return 0;
 }
