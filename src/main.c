@@ -100,7 +100,7 @@ int main(void) {
         }
 
         if (!gw_renderer_begin_frame()) continue;
-        editor_ui_build();
+        editor_ui_build(&input, (f32)timer.delta);
         gw_renderer_end_frame();
     }
 

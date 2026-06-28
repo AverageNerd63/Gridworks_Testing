@@ -150,14 +150,31 @@ extern "C" void imgui_process_msg(unsigned msg, uintptr_t wparam, intptr_t lpara
         case WM_MBUTTONDOWN: case WM_MBUTTONDBLCLK: io.AddMouseButtonEvent(2, true);  break;
         case WM_MBUTTONUP:                           io.AddMouseButtonEvent(2, false); break;
         case WM_MOUSEWHEEL:
-            io.AddMouseWheelEvent(0.0f, (float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA);
-            break;
+            io.AddMouseWheelEvent(0.0f, (float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA); break;
         case WM_MOUSEHWHEEL:
-            io.AddMouseWheelEvent((float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA, 0.0f);
-            break;
+            io.AddMouseWheelEvent((float)GET_WHEEL_DELTA_WPARAM(wparam) / (float)WHEEL_DELTA, 0.0f); break;
         case WM_CHAR:
-            if (wparam > 0 && wparam < 0x10000)
-                io.AddInputCharacterUTF16((unsigned short)wparam);
+            if (wparam > 0 && wparam < 0x10000) io.AddInputCharacterUTF16((unsigned short)wparam); break;
+        case WM_KEYDOWN: case WM_SYSKEYDOWN: {
+            ImGuiKey key = vk_to_imgui_key(wparam);
+            if (key != ImGuiKey_None) io.AddKeyEvent(key, true);
             break;
+        }
+        case WM_KEYUP: case WM_SYSKEYUP: {
+            ImGuiKey key = vk_to_imgui_key(wparam);
+            if (key != ImGuiKey_None) io.AddKeyEvent(key, false);
+            break;
+        }
     }
+}
+
+extern "C" void *imgui_register_texture(void *sampler, void *image_view) {
+    return (void *)ImGui_ImplVulkan_AddTexture(
+        (VkSampler)sampler,
+        (VkImageView)image_view,
+        VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL);
+}
+
+extern "C" void imgui_unregister_texture(void *imgui_ds) {
+    ImGui_ImplVulkan_RemoveTexture((VkDescriptorSet)imgui_ds);
 }
