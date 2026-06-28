@@ -142,23 +142,61 @@ void gw_host_shutdown(void) {
     LOG_INFO("[host] CoreCLR shut down");
 }
 
+static bool shadow_copy_assembly(const wchar_t *src_path, wchar_t *out_path, int out_len) {
+    static volatile LONG s_counter = 0;
+    LONG idx = InterlockedIncrement(&s_counter);
+
+    wchar_t tmp_dir[MAX_PATH];
+    GetTempPathW(MAX_PATH, tmp_dir);
+
+    wchar_t gw_dir[MAX_PATH];
+    _snwprintf(gw_dir, MAX_PATH, L"%lsGridworks", tmp_dir);
+    CreateDirectoryW(gw_dir, NULL);
+
+    wchar_t shadow_dir[MAX_PATH];
+    _snwprintf(shadow_dir, MAX_PATH, L"%ls\\shadow_%ld", gw_dir, (long)idx);
+    CreateDirectoryW(shadow_dir, NULL);
+    if (GetLastError() != ERROR_SUCCESS && GetLastError() != ERROR_ALREADY_EXISTS) {
+        LOG_ERROR("[host] shadow dir create failed: %lu", GetLastError());
+        return false;
+    }
+
+    const wchar_t *fname = wcsrchr(src_path, L'\\');
+    fname = fname ? fname + 1 : src_path;
+
+    _snwprintf(out_path, out_len, L"%ls\\%ls", shadow_dir, fname);
+
+    if (!CopyFileW(src_path, out_path, FALSE)) {
+        LOG_ERROR("[host] shadow copy failed: %lu", GetLastError());
+        return false;
+    }
+    return true;
+}
+
 bool gw_host_get_fn(const char *assembly_path,
                     const char *type_name,
                     const char *method_name,
                     void      **out_fn) {
     if (!s_load_fn) { LOG_ERROR("[host] host not initialized"); return false; }
 
-    wchar_t asm_w[MAX_PATH], type_w[512], method_w[256];
-    to_abs_wide(assembly_path, asm_w,  MAX_PATH);
-    to_wide(type_name,         type_w, 512);
-    to_wide(method_name,       method_w, 256);
+    wchar_t asm_abs[MAX_PATH];
+    to_abs_wide(assembly_path, asm_abs, MAX_PATH);
 
-    int32_t rc = s_load_fn(asm_w, type_w, method_w,
+    /* shadow-copy so the original DLL stays unlocked for hot-rebuild */
+    wchar_t asm_shadow[MAX_PATH];
+    if (!shadow_copy_assembly(asm_abs, asm_shadow, MAX_PATH)) return false;
+
+    wchar_t type_w[512], method_w[256];
+    to_wide(type_name,   type_w,   512);
+    to_wide(method_name, method_w, 256);
+
+    int32_t rc = s_load_fn(asm_shadow, type_w, method_w,
                            UNMANAGEDCALLERSONLY_METHOD,
                            NULL, out_fn);
     if (rc != 0) {
         LOG_ERROR("[host] get_fn %s::%s (0x%x)", type_name, method_name, (unsigned)rc);
         return false;
     }
+    LOG_INFO("[host] loaded %s::%s from shadow copy", type_name, method_name);
     return true;
 }
