@@ -41,25 +41,25 @@ bool create_frames(void) {
         };
         VK_CHECK(vk.vkAllocateCommandBuffers(s_ctx.device, &alloc, &s_frames[i].cmd_buf));
         VK_CHECK(vk.vkCreateFence(s_ctx.device, &fence_ci, NULL, &s_frames[i].in_flight));
-    }
-
-    for (u32 i = 0; i < s_swapchain.image_count; i++) {
         VK_CHECK(vk.vkCreateSemaphore(s_ctx.device, &sem_ci, NULL, &s_acquire_sems[i]));
-        VK_CHECK(vk.vkCreateSemaphore(s_ctx.device, &sem_ci, NULL, &s_render_finished[i]));
     }
 
-    LOG_INFO("[vulkan] frame sync created (%d frames, %u images)", FRAMES_IN_FLIGHT, s_swapchain.image_count);
+    for (u32 i = 0; i < s_swapchain.image_count; i++)
+        VK_CHECK(vk.vkCreateSemaphore(s_ctx.device, &sem_ci, NULL, &s_render_finished[i]));
+
+    LOG_INFO("[vulkan] frames created (%d in-flight, %u images)",
+             FRAMES_IN_FLIGHT, s_swapchain.image_count);
     return true;
 }
 
 void destroy_frames(void) {
-    for (u32 i = 0; i < s_swapchain.image_count; i++) {
-        if (s_acquire_sems[i])    { vk.vkDestroySemaphore(s_ctx.device, s_acquire_sems[i],    NULL); s_acquire_sems[i]    = VK_NULL_HANDLE; }
-        if (s_render_finished[i]) { vk.vkDestroySemaphore(s_ctx.device, s_render_finished[i], NULL); s_render_finished[i] = VK_NULL_HANDLE; }
-    }
     for (u32 i = 0; i < FRAMES_IN_FLIGHT; i++) {
-        if (s_frames[i].in_flight) vk.vkDestroyFence(s_ctx.device,       s_frames[i].in_flight, NULL);
-        if (s_frames[i].cmd_pool)  vk.vkDestroyCommandPool(s_ctx.device, s_frames[i].cmd_pool,  NULL);
+        if (s_acquire_sems[i])     { vk.vkDestroySemaphore(s_ctx.device, s_acquire_sems[i],  NULL); s_acquire_sems[i]  = VK_NULL_HANDLE; }
+        if (s_frames[i].in_flight) { vk.vkDestroyFence(s_ctx.device,     s_frames[i].in_flight, NULL); }
+        if (s_frames[i].cmd_pool)  { vk.vkDestroyCommandPool(s_ctx.device, s_frames[i].cmd_pool, NULL); }
+    }
+    for (u32 i = 0; i < s_swapchain.image_count; i++) {
+        if (s_render_finished[i]) { vk.vkDestroySemaphore(s_ctx.device, s_render_finished[i], NULL); s_render_finished[i] = VK_NULL_HANDLE; }
     }
     memset(s_frames, 0, sizeof(s_frames));
     s_frame_idx = 0;
@@ -70,9 +70,11 @@ bool vk_begin_frame(void) {
     Frame *f = &s_frames[s_frame_idx];
     vk.vkWaitForFences(s_ctx.device, 1, &f->in_flight, VK_TRUE, UINT64_MAX);
 
-    /* one acquire semaphore per frame-in-flight, not per image */
-    VkSemaphore acquire_sem = s_acquire_sems[s_frame_idx];
+    /* apply any pending viewport resize before touching the scene texture */
+    scene_pass_flush_resize();
 
+    VkSemaphore acquire_sem = s_acquire_sems[s_frame_idx];
+    /* ... rest unchanged ... */
     VkResult r = vk.vkAcquireNextImageKHR(s_ctx.device, s_swapchain.swapchain,
                                            UINT64_MAX, acquire_sem,
                                            VK_NULL_HANDLE, &s_image_idx);
@@ -91,33 +93,25 @@ bool vk_begin_frame(void) {
     };
     vk.vkBeginCommandBuffer(f->cmd_buf, &begin);
 
-    VkClearValue clear = { .color = { .float32 = { 0.1f, 0.1f, 0.1f, 1.0f } } };
-    VkRenderPassBeginInfo rp = {
-        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-        .renderPass      = s_render_pass,
-        .framebuffer     = s_framebuffers[s_image_idx],
-        .renderArea      = { .offset = {0,0}, .extent = s_swapchain.extent },
-        .clearValueCount = 1,
-        .pClearValues    = &clear,
-    };
-    vk.vkCmdBeginRenderPass(f->cmd_buf, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    /* ---- scene pass: geometry renders here ---- */
+    scene_pass_begin(f->cmd_buf);
 
     vk.vkCmdBindPipeline(f->cmd_buf, VK_PIPELINE_BIND_POINT_GRAPHICS, s_pipeline);
 
     VkViewport vp = {
-        .x = 0.0f, .y = 0.0f,
-        .width    = (f32)s_swapchain.extent.width,
-        .height   = (f32)s_swapchain.extent.height,
+        .width    = (f32)s_scene_pass.width,
+        .height   = (f32)s_scene_pass.height,
         .minDepth = 0.0f, .maxDepth = 1.0f,
     };
-    VkRect2D sc = { .offset = {0,0}, .extent = s_swapchain.extent };
+    VkRect2D sc = { .extent = { s_scene_pass.width, s_scene_pass.height } };
     vk.vkCmdSetViewport(f->cmd_buf, 0, 1, &vp);
     vk.vkCmdSetScissor(f->cmd_buf, 0, 1, &sc);
 
     VkDeviceSize offset = 0;
     vk.vkCmdBindVertexBuffers(f->cmd_buf, 0, 1, &s_vertex_buf, &offset);
     vk.vkCmdBindIndexBuffer(f->cmd_buf, s_index_buf, 0, VK_INDEX_TYPE_UINT16);
-
+    vk.vkCmdPushConstants(f->cmd_buf, s_pipeline_layout,
+                       VK_SHADER_STAGE_VERTEX_BIT, 0, 64, s_camera_vp);
     f->_acquire_sem = acquire_sem;
 
     imgui_new_frame();
@@ -127,10 +121,23 @@ bool vk_begin_frame(void) {
 void vk_end_frame(void) {
     Frame *f = &s_frames[s_frame_idx];
 
+    /* draw scene geometry, end scene pass — image transitions to SHADER_READ_ONLY */
     vk.vkCmdDrawIndexed(f->cmd_buf, 3, 1, 0, 0, 0);
-    imgui_render(f->cmd_buf);
+    scene_pass_end(f->cmd_buf);
 
+    /* ---- swapchain pass: ImGui only ---- */
+    VkClearValue clear = { .color = { .float32 = { 0.0f, 0.0f, 0.0f, 1.0f } } };
+    VkRenderPassBeginInfo rp = {
+        .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
+        .renderPass      = s_render_pass,
+        .framebuffer     = s_framebuffers[s_image_idx],
+        .renderArea      = { .extent = s_swapchain.extent },
+        .clearValueCount = 1, .pClearValues = &clear,
+    };
+    vk.vkCmdBeginRenderPass(f->cmd_buf, &rp, VK_SUBPASS_CONTENTS_INLINE);
+    imgui_render(f->cmd_buf);
     vk.vkCmdEndRenderPass(f->cmd_buf);
+
     vk.vkEndCommandBuffer(f->cmd_buf);
 
     VkPipelineStageFlags wait_stage = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;

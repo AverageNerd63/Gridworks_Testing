@@ -18,10 +18,12 @@ typedef struct {
 extern Frame      s_frames[FRAMES_IN_FLIGHT];
 extern u32        s_frame_idx;
 extern u32        s_image_idx;
-extern VkSemaphore s_acquire_sems[MAX_SWAPCHAIN_IMAGES];
+extern VkSemaphore s_acquire_sems[FRAMES_IN_FLIGHT];
 extern VkSemaphore s_render_finished[MAX_SWAPCHAIN_IMAGES];
 
 bool create_frames(void);
 void destroy_frames(void);
 bool vk_begin_frame(void);
 void vk_end_frame(void);
+
+void vk_set_camera_vp(const f32 *mat16);

@@ -182,9 +182,8 @@ static bool vk_init(const GwRendererDesc *desc) {
     if (!create_swapchain((u32)desc->window->width, (u32)desc->window->height)) return false;
     if (!create_render_pass())         return false;
     if (!create_framebuffers())        return false;
-    if (!create_pipeline())            return false;
-    if (!create_mesh_buffers())        return false;
-    if (!create_frames())              return false;
+
+    /* imgui pool + init BEFORE scene_pass_create (AddTexture needs initialized backend) */
     {
         VkDescriptorPoolSize pool_sizes[] = {
             { VK_DESCRIPTOR_TYPE_SAMPLER,                16 },
@@ -199,19 +198,27 @@ static bool vk_init(const GwRendererDesc *desc) {
         };
         VK_CHECK(vk.vkCreateDescriptorPool(s_ctx.device, &pool_ci, NULL, &s_ctx.imgui_pool));
     }
-    if (!imgui_init(desc->window ? gw_window_get_hwnd(desc->window) : NULL)) return false;
+    if (!imgui_init(gw_window_get_hwnd(desc->window))) return false;
+
+    /* scene pass after imgui so AddTexture is safe; pipeline after scene pass for render pass ref */
+    if (!scene_pass_create((u32)desc->window->width, (u32)desc->window->height)) return false;
+    if (!create_pipeline())            return false;
+    if (!create_mesh_buffers())        return false;
+    if (!create_frames())              return false;
+
     LOG_INFO("[vulkan] backend ready");
     return true;
 }
 
 static void vk_shutdown(void) {
-    imgui_shutdown();
-    if (s_ctx.imgui_pool)
-        vk.vkDestroyDescriptorPool(s_ctx.device, s_ctx.imgui_pool, NULL);
     if (s_ctx.device) vk.vkDeviceWaitIdle(s_ctx.device);
     destroy_frames();
     destroy_mesh_buffers();
     destroy_pipeline();
+    scene_pass_destroy();          /* unregisters texture — must be before imgui_shutdown */
+    imgui_shutdown();              /* destroys ImGui Vulkan backend */
+    if (s_ctx.imgui_pool)
+        vk.vkDestroyDescriptorPool(s_ctx.device, s_ctx.imgui_pool, NULL);
     destroy_framebuffers();
     destroy_render_pass();
     destroy_swapchain();
@@ -236,6 +243,7 @@ static void vk_on_resize(u32 w, u32 h) {
     destroy_swapchain();
     create_swapchain(w, h);
     create_framebuffers();
+    scene_pass_resize(w, h);
     create_frames();
     LOG_INFO("[vulkan] resized %ux%u", w, h);
 }

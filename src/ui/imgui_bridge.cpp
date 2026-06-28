@@ -92,6 +92,52 @@ extern "C" void imgui_render(void *cmd_buf) {
                                     (VkCommandBuffer)cmd_buf);
 }
 
+static ImGuiKey vk_to_imgui_key(uintptr_t vk) {
+    if (vk >= 'A' && vk <= 'Z') return (ImGuiKey)(ImGuiKey_A + (vk - 'A'));
+    if (vk >= '0' && vk <= '9') return (ImGuiKey)(ImGuiKey_0 + (vk - '0'));
+    switch (vk) {
+        case VK_TAB:       return ImGuiKey_Tab;
+        case VK_LEFT:      return ImGuiKey_LeftArrow;
+        case VK_RIGHT:     return ImGuiKey_RightArrow;
+        case VK_UP:        return ImGuiKey_UpArrow;
+        case VK_DOWN:      return ImGuiKey_DownArrow;
+        case VK_PRIOR:     return ImGuiKey_PageUp;
+        case VK_NEXT:      return ImGuiKey_PageDown;
+        case VK_HOME:      return ImGuiKey_Home;
+        case VK_END:       return ImGuiKey_End;
+        case VK_INSERT:    return ImGuiKey_Insert;
+        case VK_DELETE:    return ImGuiKey_Delete;
+        case VK_BACK:      return ImGuiKey_Backspace;
+        case VK_SPACE:     return ImGuiKey_Space;
+        case VK_RETURN:    return ImGuiKey_Enter;
+        case VK_ESCAPE:    return ImGuiKey_Escape;
+        case VK_LCONTROL:  return ImGuiKey_LeftCtrl;
+        case VK_RCONTROL:  return ImGuiKey_RightCtrl;
+        case VK_LSHIFT:    return ImGuiKey_LeftShift;
+        case VK_RSHIFT:    return ImGuiKey_RightShift;
+        case VK_LMENU:     return ImGuiKey_LeftAlt;
+        case VK_RMENU:     return ImGuiKey_RightAlt;
+        case VK_LWIN:      return ImGuiKey_LeftSuper;
+        case VK_RWIN:      return ImGuiKey_RightSuper;
+        case VK_F1:        return ImGuiKey_F1;
+        case VK_F2:        return ImGuiKey_F2;
+        case VK_F3:        return ImGuiKey_F3;
+        case VK_F4:        return ImGuiKey_F4;
+        case VK_F5:        return ImGuiKey_F5;
+        case VK_F6:        return ImGuiKey_F6;
+        case VK_F7:        return ImGuiKey_F7;
+        case VK_F8:        return ImGuiKey_F8;
+        case VK_F9:        return ImGuiKey_F9;
+        case VK_F10:       return ImGuiKey_F10;
+        case VK_F11:       return ImGuiKey_F11;
+        case VK_F12:       return ImGuiKey_F12;
+        case VK_CONTROL:   return ImGuiKey_LeftCtrl;
+        case VK_SHIFT:     return ImGuiKey_LeftShift;
+        case VK_MENU:      return ImGuiKey_LeftAlt;
+        default:           return ImGuiKey_None;
+    }
+}
+
 extern "C" void imgui_process_msg(unsigned msg, uintptr_t wparam, intptr_t lparam) {
     (void)lparam;
     if (!ImGui::GetCurrentContext()) return;
