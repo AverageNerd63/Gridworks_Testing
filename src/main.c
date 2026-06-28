@@ -9,15 +9,20 @@
 #include "ecs/ecs_export.h"
 #include "host/gw_host.h"
 #include "ui/editor_ui.h"
+#include "ui/project_ui.h"
+#include "project/project.h"
 
 #include <stdatomic.h>
+#include <stdio.h>
 #include <string.h>
+#include <objbase.h> /* CoInitializeEx / CoUninitialize */
 
-#define ENGINE_RCONFIG "managed_src/Gridworks.Engine/bin/Debug/net9.0/Gridworks.Engine.runtimeconfig.json"
-#define ENGINE_DLL     "managed_src/Gridworks.Engine/bin/Debug/net9.0/Gridworks.Engine.dll"
-#define ENGINE_TYPE    "Gridworks.Engine.Host.EngineHost, Gridworks.Engine"
-#define USER_DLL       "managed_src/UserProject/bin/Debug/net9.0/UserProject.dll"
-#define USER_WATCH_DIR "managed_src/UserProject/bin/Debug/net9.0"
+#define ENGINE_RCONFIG \
+    "managed_src/Gridworks.Engine/bin/Debug/net9.0/Gridworks.Engine.runtimeconfig.json"
+#define ENGINE_DLL \
+    "managed_src/Gridworks.Engine/bin/Debug/net9.0/Gridworks.Engine.dll"
+#define ENGINE_TYPE \
+    "Gridworks.Engine.Host.EngineHost, Gridworks.Engine"
 
 typedef void (*managed_void_fn)(void *);
 

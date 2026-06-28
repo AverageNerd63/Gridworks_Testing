@@ -8,7 +8,7 @@ SLN      := Gridworks.sln
 PLATFORM := win32
 CFLAGS   := -Wall -Wextra -std=c11  -Isrc -Ithird_party/imgui -Ithird_party -I"$(VULKAN_SDK)/Include" -DVK_NO_PROTOTYPES -D_CRT_SECURE_NO_WARNINGS -g
 CXXFLAGS := -Wall -Wextra -std=c++17 -Isrc -Ithird_party/imgui -Ithird_party -I"$(VULKAN_SDK)/Include" -DVK_NO_PROTOTYPES -D_CRT_SECURE_NO_WARNINGS -g
-LDFLAGS  := -lkernel32 -luser32 -lgdi32
+LDFLAGS  := -lkernel32 -luser32 -lgdi32 -lole32 -lshell32 -lcomdlg32
 
 rwildcard = $(foreach d,$(wildcard $(1:=/*)),$(call rwildcard,$d,$2) $(filter $(subst *,%,$2),$d))
 
@@ -18,7 +18,7 @@ C_SRCS     := $(filter-out src/platform/linux/% src/platform/macos/%,$(ALL_C_SRC
 C_OBJS     := $(patsubst src/%.c,$(OUTDIR)/obj/%.o,$(C_SRCS))
 
 # C++ sources — src/ files and third_party imgui separately
-SRC_CXX_SRCS := src/ui/imgui_bridge.cpp src/ui/editor_ui.cpp
+SRC_CXX_SRCS := $(call rwildcard,src,*.cpp)
 SRC_CXX_OBJS := $(patsubst src/%.cpp,$(OUTDIR)/obj/%.o,$(SRC_CXX_SRCS))
 
 IMGUI_SRCS := third_party/imgui/imgui.cpp \
