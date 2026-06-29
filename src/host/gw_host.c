@@ -173,30 +173,34 @@ static bool shadow_copy_assembly(const wchar_t *src_path, wchar_t *out_path, int
     return true;
 }
 
+/* one shadow copy of the engine DLL, shared by all gw_host_get_fn calls so the
+   runtime loads a single assembly instance and all managed static state is shared */
+static wchar_t s_engine_shadow[MAX_PATH] = {0};
+
 bool gw_host_get_fn(const char *assembly_path,
                     const char *type_name,
                     const char *method_name,
                     void      **out_fn) {
     if (!s_load_fn) { LOG_ERROR("[host] host not initialized"); return false; }
 
-    wchar_t asm_abs[MAX_PATH];
-    to_abs_wide(assembly_path, asm_abs, MAX_PATH);
-
-    /* shadow-copy so the original DLL stays unlocked for hot-rebuild */
-    wchar_t asm_shadow[MAX_PATH];
-    if (!shadow_copy_assembly(asm_abs, asm_shadow, MAX_PATH)) return false;
+    if (!s_engine_shadow[0]) {
+        wchar_t asm_abs[MAX_PATH];
+        to_abs_wide(assembly_path, asm_abs, MAX_PATH);
+        if (!shadow_copy_assembly(asm_abs, s_engine_shadow, MAX_PATH)) return false;
+        LOG_INFO("[host] engine DLL shadow: %ls", s_engine_shadow);
+    }
 
     wchar_t type_w[512], method_w[256];
     to_wide(type_name,   type_w,   512);
     to_wide(method_name, method_w, 256);
 
-    int32_t rc = s_load_fn(asm_shadow, type_w, method_w,
+    int32_t rc = s_load_fn(s_engine_shadow, type_w, method_w,
                            UNMANAGEDCALLERSONLY_METHOD,
                            NULL, out_fn);
     if (rc != 0) {
         LOG_ERROR("[host] get_fn %s::%s (0x%x)", type_name, method_name, (unsigned)rc);
         return false;
     }
-    LOG_INFO("[host] loaded %s::%s from shadow copy", type_name, method_name);
+    LOG_INFO("[host] loaded %s::%s", type_name, method_name);
     return true;
 }
