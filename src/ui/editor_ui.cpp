@@ -288,19 +288,18 @@ static void menu_bar(void) {
     if (!ImGui::BeginMainMenuBar()) return;
 
     if (ImGui::BeginMenu("Layout")) {
-        if (ImGui::MenuItem("Reset to Default"))
-            s_apply_default = true;
+        if (ImGui::MenuItem("Reset to Default")) s_apply_default = true;
         if (ImGui::MenuItem("Save Layout"))
             ImGui::SaveIniSettingsToDisk(s_ini_user);
         ImGui::EndMenu();
     }
 
     if (ImGui::BeginMenu("Gizmo")) {
-        if (ImGui::MenuItem("Translate",      "W", s_gizmo_op == ImGuizmo::TRANSLATE))
+        if (ImGui::MenuItem("Translate",     "W", s_gizmo_op == ImGuizmo::TRANSLATE))
             s_gizmo_op = ImGuizmo::TRANSLATE;
-        if (ImGui::MenuItem("Rotate",         "E", s_gizmo_op == ImGuizmo::ROTATE))
+        if (ImGui::MenuItem("Rotate",        "E", s_gizmo_op == ImGuizmo::ROTATE))
             s_gizmo_op = ImGuizmo::ROTATE;
-        if (ImGui::MenuItem("Scale (local)",  "R", s_gizmo_op == ImGuizmo::SCALE))
+        if (ImGui::MenuItem("Scale (local)", "R", s_gizmo_op == ImGuizmo::SCALE))
             s_gizmo_op = ImGuizmo::SCALE;
         ImGui::Separator();
         if (ImGui::MenuItem("World", nullptr, s_gizmo_mode == ImGuizmo::WORLD))
@@ -309,6 +308,45 @@ static void menu_bar(void) {
             s_gizmo_mode = ImGuizmo::LOCAL;
         ImGui::EndMenu();
     }
+
+    /* ---- centered play controls ---------------------------------------- */
+    float bar_w   = ImGui::GetWindowWidth();
+    float btn_w   = 64.0f;
+    float spacing = ImGui::GetStyle().ItemSpacing.x;
+    float group_w = btn_w * 3 + spacing * 2;
+    ImGui::SetCursorPosX((bar_w - group_w) * 0.5f);
+
+    bool playing = s_play_state == PLAY_STATE_PLAYING;
+    bool paused  = s_play_state == PLAY_STATE_PAUSED;
+    bool stopped = s_play_state == PLAY_STATE_STOPPED;
+
+    /* Play */
+    if (playing)
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.65f, 0.2f, 1.0f));
+    if (!stopped) ImGui::BeginDisabled();
+    if (ImGui::Button("Play", ImVec2(btn_w, 0)))
+        s_play_state = PLAY_STATE_PLAYING;
+    if (!stopped) ImGui::EndDisabled();
+    if (playing) ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+
+    /* Pause */
+    if (paused)
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.65f, 0.55f, 0.1f, 1.0f));
+    if (stopped) ImGui::BeginDisabled();
+    if (ImGui::Button("Pause", ImVec2(btn_w, 0)))
+        s_play_state = paused ? PLAY_STATE_PLAYING : PLAY_STATE_PAUSED;
+    if (stopped) ImGui::EndDisabled();
+    if (paused) ImGui::PopStyleColor();
+
+    ImGui::SameLine();
+
+    /* Stop */
+    if (stopped) ImGui::BeginDisabled();
+    if (ImGui::Button("Stop", ImVec2(btn_w, 0)))
+        s_play_state = PLAY_STATE_STOPPED;
+    if (stopped) ImGui::EndDisabled();
 
     ImGui::EndMainMenuBar();
 }
