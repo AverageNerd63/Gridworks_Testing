@@ -8,82 +8,85 @@ using Gridworks.Engine.ECS;
 
 namespace Gridworks.Engine.Host;
 
+internal static class EngineState
+{
+    internal static readonly BehaviourRunner Runner = new BehaviourRunner();
+    internal static WeakReference<AssemblyLoadContext>? AlcRef;
+    internal static Assembly? UserAssembly;
+}
+
 public static unsafe class EngineHost
 {
-    private static WeakReference<AssemblyLoadContext>? _alcRef;
-
-[UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-public static void Initialize(void* apiPtr)
-{
-    try
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void Initialize(void* apiPtr)
     {
-        NativeEcsApi.Current = *(GwEcsApi*)apiPtr;
-        Console.WriteLine("[managed] EngineHost initialized — ECS API bound");
+        try { NativeApi.Current = *(GwApi*)apiPtr; }
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] Initialize error: {ex}"); }
     }
-    catch (Exception ex) { Console.WriteLine($"[managed] Initialize error: {ex}"); }
-}
 
-[UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-public static void LoadUserAssembly(void* pathPtr)
-{
-    try
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void LoadUserAssembly(void* pathPtr)
     {
-        string path = Path.GetFullPath(
-            Marshal.PtrToStringUTF8((nint)pathPtr)
-            ?? throw new ArgumentNullException(nameof(pathPtr)));
-
-        // Shadow-copy so the original file stays unlocked for dotnet build to overwrite
-        string shadowDir = Path.Combine(Path.GetTempPath(), "gw_shadow");
-        Directory.CreateDirectory(shadowDir);
-        string shadowPath = Path.Combine(shadowDir, Path.GetFileName(path));
-        File.Copy(path, shadowPath, overwrite: true);
-
-        // Resolver points to original path so transitive deps resolve correctly
-        var alc = new CollectibleGameContext(path);
-        _alcRef = new WeakReference<AssemblyLoadContext>(alc);
-
-        Assembly asm = alc.LoadFromAssemblyPath(shadowPath);
-        Console.WriteLine($"[managed] loaded {asm.GetName().Name} into collectible ALC");
-
-        Type? gameType = asm.GetType("UserProject.Game");
-        MethodInfo? start = gameType?.GetMethod("Start",
-            BindingFlags.Public | BindingFlags.Static);
-
-        if (start != null)
-            start.Invoke(null, null);
-        else
-            Console.WriteLine("[managed] warning: UserProject.Game.Start() not found");
-    }
-    catch (Exception ex) { Console.WriteLine($"[managed] LoadUserAssembly error: {ex}"); }
-}
-
-[UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
-public static void UnloadUserAssembly(void* unused)
-{
-    try
-    {
-        if (_alcRef == null) return;
-
-        if (_alcRef.TryGetTarget(out AssemblyLoadContext? alc))
+        try
         {
-            alc.Unload();
-            Console.WriteLine("[managed] ALC unloading — waiting for GC");
+            string path = Path.GetFullPath(
+                Marshal.PtrToStringUTF8((nint)pathPtr)
+                ?? throw new ArgumentNullException(nameof(pathPtr)));
+
+            string shadowDir  = Path.Combine(Path.GetTempPath(), "gw_shadow");
+            Directory.CreateDirectory(shadowDir);
+            string baseName   = Path.GetFileNameWithoutExtension(path);
+            string shadowPath = Path.Combine(shadowDir,
+                $"{baseName}_{Environment.TickCount64:X}.dll");
+            File.Copy(path, shadowPath, overwrite: false);
+
+            var alc = new CollectibleGameContext(path);
+            EngineState.AlcRef       = new WeakReference<AssemblyLoadContext>(alc);
+            EngineState.UserAssembly = alc.LoadFromAssemblyPath(shadowPath);
         }
-
-        for (int i = 0; i < 10 && _alcRef.TryGetTarget(out AssemblyLoadContext? __); i++)
-        {
-            GC.Collect();
-            GC.WaitForPendingFinalizers();
-        }
-
-        Console.WriteLine(_alcRef.TryGetTarget(out AssemblyLoadContext? ___)
-            ? "[managed] warning: ALC not collected after 10 GC cycles"
-            : "[managed] ALC collected — ready for reload");
-
-        _alcRef = null;
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] LoadUserAssembly error: {ex}"); }
     }
-    catch (Exception ex) { Console.WriteLine($"[managed] UnloadUserAssembly error: {ex}"); }
-}
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void StartGame(void* _)
+    {
+        try
+        {
+            if (EngineState.UserAssembly != null)
+                EngineState.Runner.Start(EngineState.UserAssembly);
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] StartGame error: {ex}"); }
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void UpdateGame(float dt)
+    {
+        try { EngineState.Runner.Update(dt); }
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] UpdateGame error: {ex}"); }
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void StopGame(void* _)
+    {
+        try { EngineState.Runner.Stop(); }
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] StopGame error: {ex}"); }
+    }
+
+    [UnmanagedCallersOnly(CallConvs = [typeof(CallConvCdecl)])]
+    public static void UnloadUserAssembly(void* unused)
+    {
+        try
+        {
+            EngineState.Runner.Stop();
+            EngineState.UserAssembly = null;
+
+            if (EngineState.AlcRef?.TryGetTarget(out AssemblyLoadContext? alc) == true)
+                alc.Unload();
+
+            EngineState.AlcRef = null;
+        }
+        catch (Exception ex) { Console.Error.WriteLine($"[managed] UnloadUserAssembly error: {ex}"); }
+    }
 }
 
 file sealed class CollectibleGameContext : AssemblyLoadContext
@@ -98,6 +101,8 @@ file sealed class CollectibleGameContext : AssemblyLoadContext
 
     protected override Assembly? Load(AssemblyName name)
     {
+        if (name.Name == "Gridworks.Engine")
+            return typeof(EngineHost).Assembly;
         string? path = _resolver.ResolveAssemblyToPath(name);
         return path != null ? LoadFromAssemblyPath(path) : null;
     }
