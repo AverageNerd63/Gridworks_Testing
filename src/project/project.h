@@ -20,3 +20,8 @@ bool project_new(const char *root_dir, const char *name, ProjectConfig *cfg);
 
 void recent_load(char out[][PROJECT_PATH_MAX], int *count);
 void recent_add(const char *proj_file);
+void recent_remove(const char *proj_file);
+
+/* blocking initial build — call after project_new or when DLL is missing */
+bool project_build(const ProjectConfig *cfg);
+void project_set_engine_dll(const char *abs_path);

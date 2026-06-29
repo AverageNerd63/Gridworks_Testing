@@ -6,6 +6,39 @@
 
 /* ---- internal helpers ------------------------------------------------- */
 
+static char s_engine_dll[PROJECT_PATH_MAX];
+
+void project_set_engine_dll(const char *abs_path) {
+    strncpy(s_engine_dll, abs_path, sizeof s_engine_dll - 1);
+    LOG_INFO("[project] engine dll (override): %s", s_engine_dll);
+}
+
+static void derive_engine_dll(void) {
+    if (s_engine_dll[0]) return;  /* already set via override */
+
+    char dir[PROJECT_PATH_MAX];
+    GetModuleFileNameA(NULL, dir, sizeof dir);
+    char *sep = strrchr(dir, '\\');
+    if (sep) *sep = '\0';  /* strip exe filename */
+
+    /* walk up until a sibling managed_src\ directory is found */
+    while (dir[0]) {
+        char test[PROJECT_PATH_MAX];
+        snprintf(test, sizeof test, "%s\\managed_src", dir);
+        if (GetFileAttributesA(test) != INVALID_FILE_ATTRIBUTES) {
+            snprintf(s_engine_dll, sizeof s_engine_dll,
+                     "%s\\Gridworks.Engine\\bin\\Debug\\net9.0\\Gridworks.Engine.dll",
+                     test);
+            LOG_INFO("[project] engine dll (derived): %s", s_engine_dll);
+            return;
+        }
+        sep = strrchr(dir, '\\');
+        if (!sep) break;
+        *sep = '\0';
+    }
+    LOG_ERROR("[project] could not locate managed_src from exe path");
+}
+
 static void make_dirs(const char *path) {
     char tmp[PROJECT_PATH_MAX];
     strncpy(tmp, path, sizeof(tmp) - 1);
@@ -23,12 +56,6 @@ static void recent_file_path(char *out, int max) {
     char appdata[MAX_PATH];
     GetEnvironmentVariableA("APPDATA", appdata, MAX_PATH);
     snprintf(out, max, "%s\\Gridworks\\recent.txt", appdata);
-}
-
-static void engine_exe_dir(char *out, int max) {
-    GetModuleFileNameA(NULL, out, max);
-    char *sep = strrchr(out, '\\');
-    if (sep) *sep = '\0';
 }
 
 static void fill_derived(ProjectConfig *cfg) {
@@ -87,6 +114,7 @@ static bool write_text(const char *path, const char *content) {
 }
 
 bool project_new(const char *root_dir, const char *name, ProjectConfig *cfg) {
+    derive_engine_dll();
     memset(cfg, 0, sizeof *cfg);
     strncpy(cfg->root, root_dir, PROJECT_PATH_MAX - 1);
     strncpy(cfg->name, name,     PROJECT_NAME_MAX - 1);
@@ -105,13 +133,7 @@ bool project_new(const char *root_dir, const char *name, ProjectConfig *cfg) {
     snprintf(gwproj, sizeof gwproj, "name=%s\nversion=1\n", name);
     if (!write_text(cfg->proj_file, gwproj)) return false;
 
-    /* resolve engine dll path from exe location */
-    char exe_dir[PROJECT_PATH_MAX];
-    engine_exe_dir(exe_dir, sizeof exe_dir);
-    char eng_dll[PROJECT_PATH_MAX];
-    snprintf(eng_dll, sizeof eng_dll,
-             "%s\\managed_src\\Gridworks.Engine\\bin\\Debug\\net9.0\\Gridworks.Engine.dll",
-             exe_dir);
+    const char *eng_dll = s_engine_dll;
 
     /* UserProject.csproj */
     char csproj[2048];
@@ -127,6 +149,7 @@ bool project_new(const char *root_dir, const char *name, ProjectConfig *cfg) {
         "  <ItemGroup>\n"
         "    <Reference Include=\"Gridworks.Engine\">\n"
         "      <HintPath>%s</HintPath>\n"
+        "      <Private>false</Private>\n"
         "    </Reference>\n"
         "  </ItemGroup>\n"
         "</Project>\n",
@@ -187,4 +210,34 @@ void recent_add(const char *proj_file) {
     if (!f) return;
     for (int i = 0; i < mc; i++) fprintf(f, "%s\n", merged[i]);
     fclose(f);
+}
+
+void recent_remove(const char *proj_file) {
+    char existing[RECENT_MAX][PROJECT_PATH_MAX];
+    int  count = 0;
+    recent_load(existing, &count);
+
+    char path[MAX_PATH];
+    recent_file_path(path, sizeof path);
+    FILE *f = fopen(path, "w");
+    if (!f) return;
+    for (int i = 0; i < count; i++)
+        if (_stricmp(existing[i], proj_file) != 0)
+            fprintf(f, "%s\n", existing[i]);
+    fclose(f);
+}
+
+bool project_build(const ProjectConfig *cfg) {
+    char cmd[PROJECT_PATH_MAX + 64];
+    snprintf(cmd, sizeof cmd,
+             "dotnet build \"%s\" -c Debug --nologo -v quiet",
+             cfg->user_csproj);
+    LOG_INFO("[project] building user project...");
+    int ret = system(cmd);
+    if (ret != 0) {
+        LOG_ERROR("[project] build failed (exit %d)", ret);
+        return false;
+    }
+    LOG_INFO("[project] build succeeded");
+    return true;
 }
