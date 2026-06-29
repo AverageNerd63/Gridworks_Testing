@@ -1,9 +1,9 @@
 #pragma once
 #include "ecs.h"
+#include "../core/logger.h"
 
-/* Flat struct of ECS function pointers passed to managed code on startup.
-   Field order and types must match GwEcsApi in EcsBindings.cs exactly. */
 typedef struct {
+    /* ECS */
     World       *(*world_create)(void);
     void         (*world_destroy)(World *);
     ComponentId  (*register_component)(World *, usize);
@@ -16,10 +16,12 @@ typedef struct {
     bool         (*component_has)(const World *, Entity, ComponentId);
     void        *(*view)(World *, ComponentId, u32 *);
     Entity       (*view_entity)(World *, ComponentId, u32);
-} GwEcsApi;
+    /* Logging */
+    void         (*log_user)(int level, const char *msg);
+} GwApi;
 
-static inline GwEcsApi gw_ecs_api_get(void) {
-    return (GwEcsApi){
+static inline GwApi gw_api_get(void) {
+    return (GwApi){
         .world_create       = ecs_world_create,
         .world_destroy      = ecs_world_destroy,
         .register_component = ecs_register,
@@ -32,5 +34,6 @@ static inline GwEcsApi gw_ecs_api_get(void) {
         .component_has      = ecs_has,
         .view               = ecs_view,
         .view_entity        = ecs_view_entity,
+        .log_user           = gw_log_user,
     };
 }
