@@ -15,10 +15,14 @@ extern "C" {
 #include "../platform/filesystem.h"
 #include "../math/gw_math.h"
 }
+static PlayState s_play_state = PLAY_STATE_STOPPED;
 
 extern "C" void *scene_pass_get_imgui_id(void);
 extern "C" void  scene_pass_request_resize(unsigned int w, unsigned int h);
 extern "C" void  vk_set_camera_vp(const float *mat16);
+
+extern "C" PlayState editor_ui_get_play_state(void) { return s_play_state; }
+extern "C" void      editor_ui_set_play_state(PlayState state) { s_play_state = state; }
 
 /* ---- console ---------------------------------------------------------- */
 
@@ -32,7 +36,10 @@ static struct {
     bool   scroll_to_bottom;
 } s_console;
 
-extern "C" void editor_console_push(LogLevel level, const char *line, void *) {
+extern "C" void editor_console_push(LogLevel level, LogChannel channel,
+                                     const char *line, void *) {
+    if (channel == LOG_CHANNEL_ENGINE) return;  /* engine logs go to terminal/file only */
+
     u32 idx = (s_console.head + s_console.count) % CONSOLE_CAP;
     if (s_console.count == CONSOLE_CAP)
         s_console.head = (s_console.head + 1) % CONSOLE_CAP;

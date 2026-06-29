@@ -180,7 +180,7 @@ bool scene_pass_resize(u32 w, u32 h) {
     destroy_image_resources();
     s_scene_pass.width = w; s_scene_pass.height = h;
     if (!create_image_resources(w, h)) return false;
-    LOG_INFO("[scene_pass] resized %ux%u", w, h);
+    // LOG_INFO("[scene_pass] resized %ux%u", w, h);
     return true;
 }
 

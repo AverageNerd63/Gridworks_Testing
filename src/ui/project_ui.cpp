@@ -58,7 +58,7 @@ static bool pick_gwproj(char *out, int max) {
     ofn.lpstrFilter    = "Gridworks Project\0*.gwproj\0All Files\0*.*\0";
     ofn.lpstrFile      = out;
     ofn.nMaxFile       = (DWORD)max;
-    ofn.Flags          = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST;
+    ofn.Flags = OFN_FILEMUSTEXIST | OFN_PATHMUSTEXIST | OFN_NOCHANGEDIR;
     ofn.lpstrDefExt    = "gwproj";
     ofn.lpstrTitle     = "Open Gridworks Project";
     return (bool)GetOpenFileNameA(&ofn);
@@ -144,7 +144,8 @@ bool project_ui_draw(ProjectConfig *cfg) {
                 } else {
                     snprintf(s_error, sizeof s_error,
                              "Project not found: %s", proj);
-                    /* remove stale entry from recent list */
+                    recent_remove(proj);
+                    recent_load(s_recent, &s_recent_count);
                 }
             }
             if (ImGui::IsItemHovered())

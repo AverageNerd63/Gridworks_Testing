@@ -96,7 +96,6 @@ int main(void) {
     if (!gw_renderer_init(&rdesc)) return 1;
     editor_ui_init();
 
-    /* show project manager on startup */
     project_ui_open();
 
     FileWatcher fw     = {0};
@@ -105,18 +104,22 @@ int main(void) {
     Timer timer;
     timer_init(&timer);
 
+    static PlayState s_prev_play = PLAY_STATE_STOPPED;
+
     i32 prev_w = window.width, prev_h = window.height;
     while (window.running) {
         gw_window_poll(&window);
         timer_tick(&timer);
 
-        if (input_key_pressed(&input, GW_KEY_ESCAPE)) {
-            if (s_project_loaded)
-                window.running = false;
-            /* ignore Escape while project manager is open */
-        }
+        if (input_key_pressed(&input, GW_KEY_ESCAPE) && s_project_loaded)
+            window.running = false;
 
         if (s_project_loaded && atomic_exchange(&s_reload_pending, false)) {
+            if (s_prev_play != PLAY_STATE_STOPPED) {
+                if (s_managed_stop) s_managed_stop(NULL);
+                    s_prev_play = PLAY_STATE_STOPPED;
+                    editor_ui_set_play_state(PLAY_STATE_STOPPED);
+                }
             LOG_INFO("[host] hot reload triggered");
             s_managed_unload(NULL);
             s_managed_load((void *)s_project.user_dll);
