@@ -158,9 +158,20 @@ bool project_new(const char *root_dir, const char *name, ProjectConfig *cfg) {
 
     /* starter source file */
     const char *cs =
-        "using Gridworks.Engine;\n\n"
-        "public class GameLogic\n{\n"
-        "    public static void Initialize()\n    {\n    }\n}\n";
+    "using Gridworks.Engine;\n\n"
+    "namespace UserProject;\n\n"
+    "public class GameLogic : GwBehaviour\n{\n"
+    "    public override void Awake()\n    {\n"
+    "        GwLog.Info(\"GameLogic awake\");\n"
+    "    }\n\n"
+    "    public override void Start()\n    {\n"
+    "        GwLog.Info(\"GameLogic start\");\n"
+    "    }\n\n"
+    "    public override void Update(float deltaTime)\n    {\n"
+    "    }\n\n"
+    "    public override void OnDestroy()\n    {\n"
+    "        GwLog.Info(\"GameLogic destroyed\");\n"
+    "    }\n}\n";
     char cs_path[PROJECT_PATH_MAX];
     snprintf(cs_path, sizeof cs_path, "%s\\UserProject\\GameLogic.cs", cfg->root);
     if (!write_text(cs_path, cs)) return false;
